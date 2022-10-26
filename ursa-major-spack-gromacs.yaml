@@ -14,11 +14,11 @@
 
 ---
 
-blueprint_name: spack-gromacs
+blueprint_name: ursa-major-spack
 
 vars:
-  project_id:  ## Set GCP Project ID Here ##
-  deployment_name: spack-gromacs
+  project_id: ucr-research-computing
+  deployment_name: ursa-major-spack
   region: us-central1
   zone: us-central1-c
 
@@ -28,19 +28,19 @@ vars:
 deployment_groups:
 - group: primary
   modules:
-  - id: network1
+  - id: ursa-major-network1
     source: modules/network/pre-existing-vpc
 
   ## Filesystems
   - id: appsfs
     source: modules/file-system/filestore
-    use: [network1]
+    use: [ursa-major-network1]
     settings:
       local_mount: /sw
 
   - id: homefs
     source: modules/file-system/filestore
-    use: [network1]
+    use: [ursa-major-network1]
     settings:
       local_mount: /home
 
@@ -76,8 +76,8 @@ deployment_groups:
       # Uncomment and update the name and path to add a shared or personal Spack
       # cache location to speed up future deployments.
       # spack_cache_url:
-      # - mirror_name: gcs_cache
-      #   mirror_url: gs://bucket-name/...
+      #- mirror_name: gcs_cache
+      #  mirror_url: gs://ursa-major-spack-install-cache/
 
   - id: spack-startup
     source: modules/scripts/startup-script
@@ -92,17 +92,19 @@ deployment_groups:
   - id: compute_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
-    - network1
+    - ursa-major-network1
     - homefs
     - appsfs
     settings:
       partition_name: compute
       max_node_count: 20
+      enable_placement: false
+      exclusive: false
 
   - id: slurm_controller
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-controller
     use:
-    - network1
+    - ursa-major-network1
     - homefs
     - appsfs
     - compute_partition
@@ -112,8 +114,10 @@ deployment_groups:
   - id: slurm_login
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-login-node
     use:
-    - network1
+    - ursa-major-network1
     - homefs
     - appsfs
     - slurm_controller
     - spack-startup
+    settings:
+      login_machine_type: n2-standard-32
