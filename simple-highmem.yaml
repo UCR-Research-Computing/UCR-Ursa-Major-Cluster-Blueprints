@@ -14,11 +14,11 @@
 
 ---
 
-blueprint_name: hpc-install
+blueprint_name: highmem-cluster
 
 vars:
   project_id:  ## Set GCP Project ID Here ##
-  deployment_name: hpc-install
+  deployment_name: highmem-cluster
   region: us-central1
   zone: us-central1-c
 
@@ -31,12 +31,12 @@ deployment_groups:
   # Source is an embedded module, denoted by "modules/*" without ./, ../, /
   # as a prefix. To refer to a local or community module, prefix with ./, ../ or /
   # Example - ./modules/network/vpc
-  - id: network1
+  - id: highmemclusternetwork
     source: modules/network/vpc
 
   - id: homefs
     source: modules/file-system/filestore
-    use: [network1]
+    use: [highmemclusternetwork]
     settings:
       local_mount: /home
 
@@ -44,7 +44,7 @@ deployment_groups:
   - id: debug_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
-    - network1
+    - highmemclusternetwork
     - homefs
     settings:
       partition_name: debug
@@ -57,18 +57,19 @@ deployment_groups:
   - id: compute_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
-    - network1
+    - highmemclusternetwork
     - homefs
     settings:
-      partition_name: compute
-      max_node_count: 20
+      partition_name: highmem
+      max_node_count: 2
       enable_placement: false
-      exclusive: false
+      exclusive: true
+      machine_type: m3-ultramem-32
 
   - id: slurm_controller
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-controller
     use:
-    - network1
+    - highmemclusternetwork
     - homefs
     - debug_partition  # debug partition will be default as it is listed first
     - compute_partition
@@ -79,15 +80,6 @@ deployment_groups:
   - id: slurm_login
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-login-node
     use:
-    - network1
+    - highmemclusternetwork
     - homefs
-    - startup
     - slurm_controller
-
-  - id: startup
-    source: modules/scripts/startup-script
-    settings:
-      runners:
-        - type: shell
-          source: "modules/startup-script/examples/set.sh"
-          destination: "set.sh"
