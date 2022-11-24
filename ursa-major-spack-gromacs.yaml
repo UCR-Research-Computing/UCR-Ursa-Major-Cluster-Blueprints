@@ -28,19 +28,19 @@ vars:
 deployment_groups:
 - group: primary
   modules:
-  - id: ursa-major-network1
+  - id: ursa-major-cluster-network
     source: modules/network/pre-existing-vpc
 
   ## Filesystems
   - id: appsfs
     source: modules/file-system/filestore
-    use: [ursa-major-network1]
+    use: [ursa-major-cluster-network]
     settings:
       local_mount: /sw
 
   - id: homefs
     source: modules/file-system/filestore
-    use: [ursa-major-network1]
+    use: [ursa-major-cluster-network]
     settings:
       local_mount: /home
 
@@ -92,7 +92,7 @@ deployment_groups:
   - id: compute_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
-    - ursa-major-network1
+    - ursa-major-cluster-network
     - homefs
     - appsfs
     settings:
@@ -104,7 +104,7 @@ deployment_groups:
   - id: slurm_controller
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-controller
     use:
-    - ursa-major-network1
+    - ursa-major-cluster-network
     - homefs
     - appsfs
     - compute_partition
@@ -114,10 +114,10 @@ deployment_groups:
   - id: slurm_login
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-login-node
     use:
-    - ursa-major-network1
+    - ursa-major-cluster-network
     - homefs
     - appsfs
     - slurm_controller
     - spack-startup
     settings:
-      login_machine_type: n2-standard-32
+      login_machine_type: c2-standard-8

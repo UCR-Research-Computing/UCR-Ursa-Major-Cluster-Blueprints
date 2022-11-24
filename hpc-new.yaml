@@ -40,12 +40,21 @@ deployment_groups:
     settings:
       local_mount: /home
 
+  - id: data-bucket
+    source: modules/file-system/pre-existing-network-storage
+    settings:
+      remote_mount: ucr-research-computing
+      local_mount: /data
+      fs_type: gcsfuse
+      mount_options: defaults,_netdev,implicit_dirs
+
   # This debug_partition will work out of the box without requesting additional GCP quota.
   - id: debug_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - networknew
     - homefs
+    - data-bucket
     settings:
       partition_name: debug
       max_node_count: 4
@@ -59,6 +68,7 @@ deployment_groups:
     use:
     - networknew
     - homefs
+    - data-bucket
     settings:
       partition_name: compute
       max_node_count: 20
@@ -70,6 +80,7 @@ deployment_groups:
     use:
     - networknew
     - homefs
+    - data-bucket
     - debug_partition  # debug partition will be default as it is listed first
     - compute_partition
     settings:
@@ -81,4 +92,5 @@ deployment_groups:
     use:
     - networknew
     - homefs
+    - data-bucket
     - slurm_controller
