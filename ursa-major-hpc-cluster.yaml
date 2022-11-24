@@ -1,5 +1,6 @@
+
 ---
-##
+
 blueprint_name: ursa-major-hpc-cluster
 ##
 vars:
@@ -32,7 +33,7 @@ deployment_groups:
     use: [ursa-major-cluster-network]
     settings:
       filestore_tier: HIGH_SCALE_SSD
-      size_gb: 10240
+  #    size_gb: 10240
       local_mount: /work
 
   - id: scratchfs
