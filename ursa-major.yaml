@@ -36,6 +36,8 @@ deployment_groups:
     source: modules/file-system/filestore
     use: [ursa-major-cluster-network]
     settings:
+      filestore_tier: BASIC_SSD
+      size_gb: 2560
       local_mount: /sw
 
   - id: homefs
@@ -45,6 +47,12 @@ deployment_groups:
       filestore_tier: BASIC_SSD
       size_gb: 2560
       local_mount: /home
+
+  #- id: scratchfs
+   # source: community/modules/file-system/DDN-EXAScaler
+    #use: [network1]
+    #settings:
+     # local_mount: /scratch
 
   ## Install Scripts
   - id: spack
@@ -93,20 +101,35 @@ deployment_groups:
 
 
 # Partitions
-  - id: intel_partition
+  - id: intel30c_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
     - homefs
     - appsfs
     settings:
-      partition_name: intel
+      partition_name: intel30c
       max_node_count: 100
       enable_placement: false
       exclusive: false
+      image_hyperthreads: true
       machine_type: c2-standard-30
 
-  - id: amd_partition
+  - id: intel4c_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    settings:
+      partition_name: intel4c
+      max_node_count: 100
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2-standard-4
+
+  - id: amd4c_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -114,10 +137,26 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: amd
+      partition_name: amd4c
       max_node_count: 100
       enable_placement: false
       exclusive: false
+      image_hyperthreads: true
+      machine_type: c2d-standard-4
+
+  - id: amd32c_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd32c
+      max_node_count: 100
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
       machine_type: c2d-highcpu-32
 
   - id: transfer_partition
@@ -132,6 +171,7 @@ deployment_groups:
       max_node_count: 4
       enable_placement: false
       exclusive: true
+      image_hyperthreads: true
       machine_type: c2d-standard-112
 
   - id: highmem_partition
@@ -146,6 +186,7 @@ deployment_groups:
       max_node_count: 20
       enable_placement: false
       exclusive: true
+      image_hyperthreads: true
       machine_type: m1-ultramem-40
   
 
@@ -161,6 +202,7 @@ deployment_groups:
       max_node_count: 20
       enable_placement: false
       exclusive: true
+      image_hyperthreads: true
       machine_type: n1-standard-4
       gpu_type: nvidia-tesla-t4
       gpu_count: 1 
@@ -177,6 +219,7 @@ deployment_groups:
       max_node_count: 200
       enable_placement: false
       exclusive: false
+      image_hyperthreads: true
       machine_type: n2-standard-4
 
   - id: slurm_controller
@@ -186,11 +229,13 @@ deployment_groups:
     - homefs
     - appsfs
     - debug_partition
-    - intel_partition
-    - amd_partition
+    - intel4c_partition
+    - intel30c_partition
+    - amd4c_partition
+    - amd32c_partition
     - gpu_partition
     - highmem_partition
-    #- transfer_partition
+    - transfer_partition
     settings:
       login_node_count: 1
       suspend_time: 60
