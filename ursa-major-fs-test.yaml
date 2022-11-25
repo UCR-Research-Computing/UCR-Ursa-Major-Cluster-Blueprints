@@ -5,257 +5,61 @@ blueprint_name: ursa-major-hpc-cluster
 ##
 vars:
   project_id: ucr-research-computing
-  deployment_name: ursa-major-hpc-cluster
+  deployment_name: ursa-major-fstest
   region: us-central1
-  zone: us-central1-c
+  zone: us-central1-a
 ##
 deployment_groups:
 - group: primary
   modules:
-  - id: ursa-major-cluster-network
+  - id: ursa-major-cluster-network-fstest
     source: modules/network/vpc
-
-  ## Filesystems
-  - id: appsfs
-    source: modules/file-system/filestore
-    use: [ursa-major-cluster-network]
-    settings:
-      local_mount: /sw
 
   - id: homefs
     source: modules/file-system/filestore
-    use: [ursa-major-cluster-network]
+    use: [ursa-major-cluster-network-fstest]
     settings:
       local_mount: /home
 
-  - id: workfs
-    source: modules/file-system/filestore
-    use: [ursa-major-cluster-network]
+  - id: data
+    source: modules/file-system/pre-existing-network-storage
     settings:
-      filestore_tier: BASIC_SSD
-      size_gb: 2560
-      local_mount: /work
+      remote_mount: ucr-research-computing
+      local_mount: /data
+      fs_type: gcsfuse
+      mount_options: defaults,_netdev,implicit_dirs
 
-  - id: scratchfs
-    source: community/modules/file-system/DDN-EXAScaler
-    use: [ursa-major-cluster-network]
-    settings:
-      local_mount: /scratch
-
-#  - id: data-bucket
-#    source: modules/file-system/pre-existing-network-storage
-#    settings:
-#      remote_mount: gs://ucr-research-computing/cluster-data/
-#      local_mount: /data
-#      fs_type: gcsfuse
-#      mount_options: defaults,_netdev,implicit_dirs
-
-  ## Install Scripts
-  - id: spack
-    source: community/modules/scripts/spack-install
-    settings:
-      install_dir: /sw/spack
-      spack_url: https://github.com/spack/spack
-      spack_ref: v0.18.0
-      log_file: /var/log/spack.log
-      configs:
-      - type: single-config
-        scope: defaults
-        content: "config:build_stage:/sw/spack/spack-stage"
-      - type: file
-        scope: defaults
-        content: |
-          modules:
-            default:
-              tcl:
-                hash_length: 0
-                all:
-                  conflict:
-                    - '{name}'
-                projections:
-                  all: '{name}/{version}-{compiler.name}-{compiler.version}'
-      compilers:
-      - gcc@10.3.0 target=x86_64
-      packages:
-      - intel-mpi@2018.4.274%gcc@10.3.0
-      - gromacs@2021.2 %gcc@10.3.0 ^intel-mpi@2018.4.274
-      # Uncomment and update the name and path to add a shared or personal Spack
-      # cache location to speed up future deployments.
-      # spack_cache_url:
-      #- mirror_name: gcs_cache
-      #  mirror_url: gs://ursa-major-spack-install-cache/
-
-  - id: spack-startup
-    source: modules/scripts/startup-script
-    settings:
-      runners:
-      - type: shell
-        source: modules/startup-script/examples/install_ansible.sh
-        destination: install_ansible.sh
-      - $(spack.install_spack_deps_runner)
-      - $(spack.install_spack_runner)
-
-  - id: intel_partition
+  - id: main_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
-    - ursa-major-cluster-network
+    - ursa-major-cluster-network-fstest
     - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
+    - data
     settings:
-      partition_name: intel
+      partition_name: main
       max_node_count: 20
       enable_placement: false
       exclusive: false
-
-  - id: amd_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: amd
-      max_node_count: 20
-      enable_placement: false
-      exclusive: false
-
-  - id: transfer_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: transfer
-      max_node_count: 1
-      enable_placement: false
-      exclusive: false
-      machine_type: c2d-standard-112
-
-  - id: arm_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: arm
-      max_node_count: 20
-      enable_placement: false
-      exclusive: false
-
-  - id: highmem_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: highmem
-      max_node_count: 10
-      enable_placement: false
-      exclusive: false
-      machine_type: m3-ultramem-32
-      
-
-  - id: gpu_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: gpu
-      max_node_count: 20
-      enable_placement: false
-      exclusive: true
-      machine_type: n1-standard-4
-      gpu_type: nvidia-tesla-t4
-      gpu_count: 1
-
-  - id: tpu_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: gpu
-      max_node_count: 20
-      enable_placement: false
-      exclusive: true
-      machine_type: n1-standard-4
-      gpu_type: nvidia-tesla-t4
-      gpu_count: 1      
-
-  - id: debug_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    settings:
-      partition_name: debug
-      max_node_count: 20
-      enable_placement: false
-      exclusive: false
-      machine_type: n2-standard-4
-
+      image_hyperthreads: true
+      machine_type: e2-standard-4
 
   - id: slurm_controller
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-controller
     use:
-    - ursa-major-cluster-network
+    - ursa-major-cluster-network-fstest
     - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
-    - debug_partition
-    - intel_partition
-    - amd_partition
-    - arm_partition
-    - gpu_partition
-    - tpu_partition
-    - highmem_partition
-    - transfer_partition
+    - data
+    - main_partition
     settings:
       login_node_count: 1
 
   - id: slurm_login
     source: community/modules/scheduler/SchedMD-slurm-on-gcp-login-node
     use:
-    - ursa-major-cluster-network
+    - ursa-major-cluster-network-fstest
     - homefs
-    - appsfs
-    - workfs
-    - scratchfs
-    #- data-bucket
+    - data
     - slurm_controller
     - spack-startup
     settings:
-      login_machine_type: c2-standard-16
+      login_machine_type: c2-standard-4

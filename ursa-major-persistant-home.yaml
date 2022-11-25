@@ -36,8 +36,9 @@ deployment_groups:
     source: modules/file-system/pre-existing-network-storage
     use: [ursa-major-cluster-network]
     settings:
-      filestore_tier: BASIC_SSD
-      size_gb: 2560
+      server_ip: 10.118.229.210
+      remote_mount: nfsshare
+      fs_type: nfs
       local_mount: /home
 
   #- id: scratchfs
@@ -198,7 +199,7 @@ deployment_groups:
       gpu_type: nvidia-tesla-t4
       gpu_count: 1 
 
-  - id: debug_partition
+  - id: quick_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -206,7 +207,7 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: debug
+      partition_name: quick
       max_node_count: 125
       enable_placement: false
       exclusive: false
@@ -235,7 +236,7 @@ deployment_groups:
     - homefs
     - appsfs
     - main_partition
-    - debug_partition
+    - quick_partition
     - intel_mpi_partition
     - intel_smp_partition
     - amd_mpi_partition
