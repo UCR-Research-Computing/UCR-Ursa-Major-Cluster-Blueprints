@@ -17,7 +17,7 @@ vars:
   zone: us-central1-a
 
 # Documentation for each of the modules used below can be found at
-# https://github.com/GoogleCloudPlatform/hpc-toolkit/blob/_16/modules/README.md
+# https://github.com/GoogleCloudPlatform/hpc-toolkit/blob/main/modules/README.md
 
 deployment_groups:
 - group: primary
@@ -36,9 +36,8 @@ deployment_groups:
     source: modules/file-system/pre-existing-network-storage
     use: [ursa-major-cluster-network]
     settings:
-      server_ip: 10.118.229.210
-      remote_mount: nfsshare
-      fs_type: nfs
+      filestore_tier: BASIC_SSD
+      size_gb: 2560
       local_mount: /home
 
   #- id: scratchfs
@@ -94,63 +93,35 @@ deployment_groups:
 
 
 # Partitions
-  - id: intel_30_partition
+  - id: intel_smp_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
     - homefs
     - appsfs
     settings:
-      partition_name: intel_30
+      partition_name: intel_smp
       max_node_count: 16
       enable_placement: false
       exclusive: false
       image_hyperthreads: true
       machine_type: c2-standard-30
-      
-  - id: intel_8_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    settings:
-      partition_name: intel_8
-      max_node_count: 62
-      enable_placement: false
-      exclusive: false
-      image_hyperthreads: true
-      machine_type: c2-standard-8
 
-  - id: intel_60_partition
+  - id: intel_mpi_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
     - homefs
     - appsfs
     settings:
-      partition_name: intel_60
-      max_node_count: 8
-      enable_placement: false
-      exclusive: false
-      image_hyperthreads: true
-      machine_type: c2-standard-60
-
-  - id: intel_mpi_2_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    settings:
-      partition_name: intel_mpi_2
+      partition_name: intel_mpi
       max_node_count: 125
       enable_placement: true
       exclusive: true
-      image_hyperthreads: false
+      image_hyperthreads: true
       machine_type: c2-standard-4
 
-  - id: amd_mpi_2_partition
+  - id: amd_mpi_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -158,44 +129,14 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: amd_mpi_2
+      partition_name: amd_mpi
       max_node_count: 125
       enable_placement: true
       exclusive: true
-      image_hyperthreads: false
+      image_hyperthreads: true
       machine_type: c2d-standard-4
-      
-  - id: amd_16_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    #- data-bucket
-    settings:
-      partition_name: amd_16
-      max_node_count: 30
-      enable_placement: false
-      exclusive: false
-      image_hyperthreads: true
-      machine_type: c2d-standard-16  
-  
-  - id: amd_8_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    #- data-bucket
-    settings:
-      partition_name: amd_8
-      max_node_count: 62
-      enable_placement: false
-      exclusive: false
-      image_hyperthreads: true
-      machine_type: c2d-standard-8
 
-  - id: amd_32_partition
+  - id: amd_smp_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -203,14 +144,14 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: amd_32
-      max_node_count: 15
+      partition_name: amd_smp
+      max_node_count: 16
       enable_placement: false
       exclusive: false
       image_hyperthreads: true
       machine_type: c2d-highcpu-32
 
-  - id: amd_56_partition
+  - id: data_transfer_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -218,29 +159,14 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: amd_56
-      max_node_count: 16
-      enable_placement: false
-      exclusive: false
-      image_hyperthreads: true
-      machine_type: c2d-highcpu-56      
-
-  - id: intel_112_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    #- data-bucket
-    settings:
-      partition_name: very_high_cpu
-      max_node_count: 1
+      partition_name: data_transfer
+      max_node_count: 4
       enable_placement: false
       exclusive: true
       image_hyperthreads: true
       machine_type: c2d-standard-112
 
-  - id: amd_224_partition
+  - id: highmem_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -248,22 +174,7 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: very_high_cpu
-      max_node_count: 1
-      enable_placement: false
-      exclusive: true
-      image_hyperthreads: true
-      machine_type: n2d-standard-224
-
-  - id: high_memory_1tb_partition
-    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    #- data-bucket
-    settings:
-      partition_name: high_memory_1tb
+      partition_name: highmem
       max_node_count: 12
       enable_placement: false
       exclusive: true
@@ -287,7 +198,7 @@ deployment_groups:
       gpu_type: nvidia-tesla-t4
       gpu_count: 1 
 
-  - id: quick_4_partition
+  - id: debug_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -295,14 +206,14 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: quick_4
-      max_node_count: 2000
+      partition_name: debug
+      max_node_count: 125
       enable_placement: false
       exclusive: false
       image_hyperthreads: true
       machine_type: e2-standard-4
 
-  - id: intel_16_partition
+  - id: main_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -310,8 +221,8 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: intel_16
-      max_node_count: 30
+      partition_name: main
+      max_node_count: 31
       enable_placement: false
       exclusive: false
       image_hyperthreads: true
@@ -323,21 +234,15 @@ deployment_groups:
     - ursa-major-cluster-network
     - homefs
     - appsfs
-    - quick_4_partition
-    - intel_mpi_2_partition
-    - intel_8_partition
-    - intel_16_partition
-    - intel_30_partition
-    - intel_60_partition
-    - intel_112_partition
-    - amd_mpi_2_partition
-    - amd_8_partition
-    - amd_16_partition
-    - amd_32_partition
-    - amd_56_partition
-    - amd_224_partition
+    - main_partition
+    - debug_partition
+    - intel_mpi_partition
+    - intel_smp_partition
+    - amd_mpi_partition
+    - amd_smp_partition
     - gpu_t4_partition
-    - high_memory_1tb_partition
+    - highmem_partition
+    - data_transfer_partition
     settings:
       login_node_count: 1
       suspend_time: 60
