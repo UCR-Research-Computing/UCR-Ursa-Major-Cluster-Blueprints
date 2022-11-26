@@ -36,9 +36,8 @@ deployment_groups:
     source: modules/file-system/pre-existing-network-storage
     use: [ursa-major-cluster-network]
     settings:
-      server_ip: 10.118.229.210
-      remote_mount: nfsshare
-      fs_type: nfs
+      filestore_tier: BASIC_SSD
+      size_gb: 2560
       local_mount: /home
 
   #- id: scratchfs
