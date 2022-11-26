@@ -233,7 +233,7 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: very_high_cpu
+      partition_name: intel_112
       max_node_count: 1
       enable_placement: false
       exclusive: true
@@ -248,7 +248,7 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: very_high_cpu
+      partition_name: amd_224
       max_node_count: 1
       enable_placement: false
       exclusive: true
@@ -296,7 +296,7 @@ deployment_groups:
     #- data-bucket
     settings:
       partition_name: quick_4
-      max_node_count: 2000
+      max_node_count: 200
       enable_placement: false
       exclusive: false
       image_hyperthreads: true
