@@ -224,7 +224,7 @@ deployment_groups:
       image_hyperthreads: true
       machine_type: c2d-highcpu-56      
 
-  - id: intel_112_partition
+  - id: intel_128_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
     use:
     - ursa-major-cluster-network
@@ -232,12 +232,12 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: very_high_cpu
+      partition_name: intel_128
       max_node_count: 1
       enable_placement: false
       exclusive: true
       image_hyperthreads: true
-      machine_type: c2d-standard-112
+      machine_type: n2-standard-128
 
   - id: amd_224_partition
     source: community/modules/compute/SchedMD-slurm-on-gcp-partition
@@ -247,7 +247,7 @@ deployment_groups:
     - appsfs
     #- data-bucket
     settings:
-      partition_name: very_high_cpu
+      partition_name: amd_224
       max_node_count: 1
       enable_placement: false
       exclusive: true
@@ -328,7 +328,7 @@ deployment_groups:
     - intel_16_partition
     - intel_30_partition
     - intel_60_partition
-    - intel_112_partition
+    - intel_128_partition
     - amd_mpi_2_partition
     - amd_8_partition
     - amd_16_partition
