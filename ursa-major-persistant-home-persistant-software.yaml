@@ -1,0 +1,375 @@
+
+# +-++-++-+ +-++-++-++-++-++-++-++-+ +-++-++-++-++-++-++-++-++-+
+# |U||C||R| |R||e||s||e||a||r||c||h| |C||o||m||p||u||t||i||n||g|
+# +-++-++-+ +-++-++-++-++-++-++-++-+ +-++-++-++-++-++-++-++-++-+
+#        +-++-++-++-+ +-++-++-++-++-+ +-++-++-+                 
+#        |U||r||s||a| |M||a||j||o||r| |H||P||C|                 
+#        +-++-++-++-+ +-++-++-++-++-+ +-++-++-+                 
+
+---
+
+blueprint_name: ursa-major
+
+vars:
+  project_id: ucr-research-computing
+  deployment_name: ursa-major
+  region: us-central1
+  zone: us-central1-a
+
+# Documentation for each of the modules used below can be found at
+# https://github.com/GoogleCloudPlatform/hpc-toolkit/blob/_16/modules/README.md
+
+deployment_groups:
+- group: primary
+  modules:
+  - id: ursa-major-cluster-network
+    source: modules/network/pre-existing-vpc
+
+  ## Filesystems
+  - id: appsfs
+    source: modules/file-system/pre-existing-network-storage
+    use: [ursa-major-cluster-network]
+    settings:
+      server_ip: 10.5.54.146
+      remote_mount: nfsshare
+      fs_type: nfs
+      local_mount: /sw
+
+  - id: homefs
+    source: modules/file-system/pre-existing-network-storage
+    use: [ursa-major-cluster-network]
+    settings:
+      server_ip: 10.118.229.210
+      remote_mount: nfsshare
+      fs_type: nfs
+      local_mount: /home
+
+  #- id: scratchfs
+   # source: community/modules/file-system/DDN-EXAScaler
+    #use: [network1]
+    #settings:
+     # local_mount: /scratch
+
+  ## Install Scripts
+  - id: spack
+    source: community/modules/scripts/spack-install
+    settings:
+      install_dir: /sw/spack
+      spack_url: https://github.com/spack/spack
+      spack_ref: v0.18.0
+      log_file: /var/log/spack.log
+      configs:
+      - type: single-config
+        scope: defaults
+        content: "config:build_stage:/sw/spack/spack-stage"
+      - type: file
+        scope: defaults
+        content: |
+          modules:
+            default:
+              tcl:
+                hash_length: 0
+                all:
+                  conflict:
+                    - '{name}'
+                projections:
+                  all: '{name}/{version}-{compiler.name}-{compiler.version}'
+      compilers:
+      - gcc@10.3.0 target=x86_64
+      packages:
+      - intel-mpi@2018.4.274%gcc@10.3.0
+      #- gromacs@2021.2 %gcc@10.3.0 ^intel-mpi@2018.4.274
+      # Uncomment and update the name and path to add a shared or personal Spack
+      # cache location to speed up future deployments.
+      # spack_cache_url:
+      #- mirror_name: gcs_cache
+      #  mirror_url: gs://ursa-major-spack-install-cache/
+
+  - id: spack-startup
+    source: modules/scripts/startup-script
+    settings:
+      runners:
+      - type: shell
+        source: modules/startup-script/examples/install_ansible.sh
+        destination: install_ansible.sh
+      - $(spack.install_spack_deps_runner)
+      - $(spack.install_spack_runner)
+
+
+# Partitions
+  - id: intel_30_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    settings:
+      partition_name: intel_30
+      max_node_count: 16
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2-standard-30
+      
+  - id: intel_8_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    settings:
+      partition_name: intel_8
+      max_node_count: 62
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2-standard-8
+
+  - id: intel_60_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    settings:
+      partition_name: intel_60
+      max_node_count: 8
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2-standard-60
+
+  - id: intel_mpi_2_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    settings:
+      partition_name: intel_mpi_2
+      max_node_count: 125
+      enable_placement: true
+      exclusive: true
+      image_hyperthreads: false
+      machine_type: c2-standard-4
+
+  - id: amd_mpi_2_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_mpi_2
+      max_node_count: 125
+      enable_placement: true
+      exclusive: true
+      image_hyperthreads: false
+      machine_type: c2d-standard-4
+      
+  - id: amd_16_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_16
+      max_node_count: 30
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2d-standard-16  
+  
+  - id: amd_8_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_8
+      max_node_count: 62
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2d-standard-8
+
+  - id: amd_32_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_32
+      max_node_count: 15
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2d-highcpu-32
+
+  - id: amd_56_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_56
+      max_node_count: 16
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2d-highcpu-56      
+
+  - id: intel_128_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: intel_128
+      max_node_count: 3
+      enable_placement: false
+      exclusive: true
+      image_hyperthreads: true
+      machine_type: n2-standard-128
+
+  - id: amd_112_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_112
+      max_node_count: 2
+      enable_placement: false
+      exclusive: true
+      image_hyperthreads: true
+      machine_type: c2d-standard-112
+
+  - id: amd_224_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: amd_224
+      max_node_count: 2
+      enable_placement: false
+      exclusive: true
+      image_hyperthreads: true
+      machine_type: n2d-standard-224
+
+  - id: high_memory_1tb_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: high_memory_1tb
+      max_node_count: 12
+      enable_placement: false
+      exclusive: true
+      image_hyperthreads: true
+      machine_type: m1-ultramem-40
+  
+  - id: gpu_t4_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: gpu_t4
+      max_node_count: 10
+      enable_placement: false
+      exclusive: true
+      image_hyperthreads: true
+      machine_type: n1-standard-4
+      gpu_type: nvidia-tesla-t4
+      gpu_count: 1 
+
+  - id: quick_4_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: quick_4
+      max_node_count: 200
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: e2-standard-4
+
+  - id: intel_16_partition
+    source: community/modules/compute/SchedMD-slurm-on-gcp-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    #- data-bucket
+    settings:
+      partition_name: intel_16
+      max_node_count: 30
+      enable_placement: false
+      exclusive: false
+      image_hyperthreads: true
+      machine_type: c2-standard-16
+
+  - id: slurm_controller
+    source: community/modules/scheduler/SchedMD-slurm-on-gcp-controller
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - quick_4_partition
+    - intel_mpi_2_partition
+    - intel_8_partition
+    - intel_16_partition
+    - intel_30_partition
+    - intel_60_partition
+    - intel_128_partition
+    - amd_mpi_2_partition
+    - amd_8_partition
+    - amd_16_partition
+    - amd_32_partition
+    - amd_56_partition
+    - amd_112_partition
+    - amd_224_partition
+    - gpu_t4_partition
+    - high_memory_1tb_partition
+    settings:
+      login_node_count: 1
+      suspend_time: 60
+      cluster_name: ursa-major
+
+  - id: slurm_login
+    source: community/modules/scheduler/SchedMD-slurm-on-gcp-login-node
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - slurm_controller
+    - spack-startup
+    settings:
+      cluster_name: ursa-major
+      login_machine_type: c2-standard-8
