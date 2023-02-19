@@ -1,0 +1,155 @@
+
+# +-++-++-+ +-++-++-++-++-++-++-++-+ +-++-++-++-++-++-++-++-++-+
+# |U||C||R| |R||e||s||e||a||r||c||h| |C||o||m||p||u||t||i||n||g|
+# +-++-++-+ +-++-++-++-++-++-++-++-+ +-++-++-++-++-++-++-++-++-+
+#        +-++-++-++-+ +-++-++-++-++-+ +-++-++-+                 
+#        |U||r||s||a| |M||a||j||o||r| |H||P||C|                 
+#        +-++-++-++-+ +-++-++-++-++-+ +-++-++-+                 
+
+---
+
+blueprint_name: ursa-major
+
+vars:
+  project_id: ucr-research-computing
+  deployment_name: umcrshcp
+  region: us-central1
+  zone: us-central1-a
+
+# Documentation for each of the modules used below can be found at
+# https://github.com/GoogleCloudPlatform/hpc-toolkit/blob/_16/modules/README.md
+
+deployment_groups:
+- group: primary
+  modules:
+
+  - id: ursa-major-cluster-network
+    source: modules/network/pre-existing-vpc
+
+  - id: appsfs
+    source: modules/file-system/pre-existing-network-storage
+    settings:
+      server_ip: 10.5.54.146
+      remote_mount: nfsshare
+      fs_type: nfs
+      local_mount: /sw
+
+  - id: homefs
+    source: modules/file-system/pre-existing-network-storage
+    settings:
+      server_ip: 10.118.229.210
+      remote_mount: nfsshare
+      fs_type: nfs
+      local_mount: /home
+
+  ## Install Scripts
+  - id: spack
+    source: community/modules/scripts/spack-install
+    settings:
+      install_dir: /sw/spack
+      spack_url: https://github.com/spack/spack
+      spack_ref: v0.18.0
+      log_file: /var/log/spack.log
+      configs:
+      - type: single-config
+        scope: defaults
+        content: "config:build_stage:/sw/spack/spack-stage"
+      - type: file
+        scope: defaults
+        content: |
+          modules:
+            default:
+              tcl:
+                hash_length: 0
+                all:
+                  conflict:
+                    - '{name}'
+                projections:
+                  all: '{name}/{version}-{compiler.name}-{compiler.version}'
+      compilers:
+      - gcc@10.3.0 target=x86_64
+      packages:
+      - intel-mpi@2018.4.274%gcc@10.3.0
+      #- gromacs@2021.2 %gcc@10.3.0 ^intel-mpi@2018.4.274
+      # Uncomment and update the name and path to add a shared or personal Spack
+      # cache location to speed up future deployments.
+      # spack_cache_url:
+      #- mirror_name: gcs_cache
+      #  mirror_url: gs://ursa-major-spack-install-cache/
+
+  - id: spack-startup
+    source: modules/scripts/startup-script
+    settings:
+      runners:
+      - type: shell
+        source: modules/startup-script/examples/install_ansible.sh
+        destination: install_ansible.sh
+      - $(spack.install_spack_deps_runner)
+      - $(spack.install_spack_runner)
+
+
+# Partitions
+  - id: intel_30_partition
+    source: community/modules/compute/schedmd-slurm-gcp-v5-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - c230
+    settings:
+      partition_name: i30
+      enable_placement: false
+      exclusive: false
+      is_default: true
+
+  - id: amd_32_partition
+    source: community/modules/compute/schedmd-slurm-gcp-v5-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - c2d32
+    settings:
+      partition_name: a32
+      enable_placement: false
+      exclusive: false
+
+# Node groups
+  - id: c230
+    source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
+    settings:
+      name: c230 
+      node_count_dynamic_max: 16
+      enable_smt: true
+      machine_type: c2-standard-30
+
+  - id: c2d32
+    source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
+    settings:
+      name: c2d32
+      node_count_dynamic_max: 15
+      enable_smt: true
+      machine_type: c2d-highcpu-32
+
+  - id: slurm_controller
+    source: community/modules/scheduler/schedmd-slurm-gcp-v5-controller
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - intel_30_partition
+    - amd_32_partition
+    settings:
+      disable_controller_public_ips: false 
+      enable_reconfigure: true
+      enable_bigquery_load: true
+
+  - id: slurm_login
+    source: community/modules/scheduler/schedmd-slurm-gcp-v5-login
+    use:
+    - ursa-major-cluster-network
+    - slurm_controller
+    - spack-startup
+    settings:
+      disable_login_public_ips: false
+      machine_type: e2-standard-8
