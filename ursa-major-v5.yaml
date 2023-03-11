@@ -1,4 +1,3 @@
-
 # +-++-++-+ +-++-++-++-++-++-++-++-+ +-++-++-++-++-++-++-++-++-+
 # |U||C||R| |R||e||s||e||a||r||c||h| |C||o||m||p||u||t||i||n||g|
 # +-++-++-+ +-++-++-++-++-++-++-++-+ +-++-++-++-++-++-++-++-++-+
@@ -12,7 +11,7 @@ blueprint_name: ursa-major
 
 vars:
   project_id: ucr-research-computing
-  deployment_name: umcrshcp
+  deployment_name: rshcomp
   region: us-central1
   zone: us-central1-a
 
@@ -89,6 +88,19 @@ deployment_groups:
 
 
 # Partitions
+  - id: basic
+    source: community/modules/compute/schedmd-slurm-gcp-v5-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - e2s2
+    settings:
+      partition_name: basic
+      enable_placement: false
+      exclusive: false
+      is_default: true
+
   - id: intel_30_partition
     source: community/modules/compute/schedmd-slurm-gcp-v5-partition
     use:
@@ -100,7 +112,7 @@ deployment_groups:
       partition_name: i30
       enable_placement: false
       exclusive: false
-      is_default: true
+      is_default: false
 
   - id: amd_32_partition
     source: community/modules/compute/schedmd-slurm-gcp-v5-partition
@@ -114,7 +126,27 @@ deployment_groups:
       enable_placement: false
       exclusive: false
 
+  - id: gpu_t4_partition
+    source: community/modules/compute/schedmd-slurm-gcp-v5-partition
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    - n14
+    settings:
+      partition_name: gput4
+      enable_placement: false
+      exclusive: false
+
 # Node groups
+  - id: e2s2
+    source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
+    settings:
+      name: e2s2 
+      node_count_dynamic_max: 240
+      enable_smt: true
+      machine_type: e2-standard-2
+
   - id: c230
     source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
     settings:
@@ -131,14 +163,27 @@ deployment_groups:
       enable_smt: true
       machine_type: c2d-highcpu-32
 
+  - id: n14
+    source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
+    settings:
+      name: n14
+      node_count_dynamic_max: 10
+      enable_smt: true
+      machine_type: n1-standard-8
+      gpu: 
+        count: 1
+        type: nvidia-tesla-t4 
+
   - id: slurm_controller
     source: community/modules/scheduler/schedmd-slurm-gcp-v5-controller
     use:
     - ursa-major-cluster-network
     - homefs
     - appsfs
+    - basic
     - intel_30_partition
     - amd_32_partition
+    - gpu_t4_partition
     settings:
       disable_controller_public_ips: false 
       enable_reconfigure: true
