@@ -88,19 +88,6 @@ deployment_groups:
 
 
 # Partitions
-  - id: basic
-    source: community/modules/compute/schedmd-slurm-gcp-v5-partition
-    use:
-    - ursa-major-cluster-network
-    - homefs
-    - appsfs
-    - e2s2
-    settings:
-      partition_name: basic
-      enable_placement: false
-      exclusive: false
-      is_default: true
-
   - id: intel_30_partition
     source: community/modules/compute/schedmd-slurm-gcp-v5-partition
     use:
@@ -112,7 +99,7 @@ deployment_groups:
       partition_name: i30
       enable_placement: false
       exclusive: false
-      is_default: false
+      is_default: true
 
   - id: amd_32_partition
     source: community/modules/compute/schedmd-slurm-gcp-v5-partition
@@ -139,14 +126,6 @@ deployment_groups:
       exclusive: false
 
 # Node groups
-  - id: e2s2
-    source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
-    settings:
-      name: e2s2 
-      node_count_dynamic_max: 240
-      enable_smt: true
-      machine_type: e2-standard-2
-
   - id: c230
     source: community/modules/compute/schedmd-slurm-gcp-v5-node-group
     settings:
@@ -180,7 +159,6 @@ deployment_groups:
     - ursa-major-cluster-network
     - homefs
     - appsfs
-    - basic
     - intel_30_partition
     - amd_32_partition
     - gpu_t4_partition
