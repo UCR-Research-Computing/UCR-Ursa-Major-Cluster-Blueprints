@@ -176,3 +176,17 @@ deployment_groups:
     settings:
       disable_login_public_ips: false
       machine_type: e2-standard-8
+
+
+  - id: desktop
+    source: community/modules/remote-desktop/chrome-remote-desktop
+    use:
+    - ursa-major-cluster-network
+    - homefs
+    - appsfs
+    settings:
+      name_prefix: chrome-remote-desktop
+      install_nvidia_driver: true
+      startup_script: |
+        sudo apt-get update
+        sudo apt-get -y upgrade
