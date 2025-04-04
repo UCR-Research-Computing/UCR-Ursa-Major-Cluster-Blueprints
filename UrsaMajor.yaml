@@ -104,7 +104,7 @@ deployment_groups:
       runners:
       - $(spack-execute.spack_runner)
 
-  - id: compute_nodeset
+  - id: c30_nodes
     source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
     use: [network]
     settings:
@@ -112,11 +112,11 @@ deployment_groups:
       bandwidth_tier: gvnic_enabled
       allow_automatic_updates: false
 
-  - id: compute_partition
+  - id: c30_partition
     source: community/modules/compute/schedmd-slurm-gcp-v6-partition
-    use: [compute_nodeset]
+    use: [c30_nodes]
     settings:
-      partition_name: compute
+      partition_name: c30
       is_default: true
 
   - id: slurm_login
@@ -129,7 +129,7 @@ deployment_groups:
     source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
     use:
     - network
-    - compute_partition
+    - c30_partition
     - slurm_login
     - homefs
     - appsfs
