@@ -133,37 +133,73 @@ deployment_groups:
       runners:
       - $(spack-execute.spack_runner)
 
-  - id: compute_nodeset
+  - id: c3d180_nodeset
     source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
     use: [network]
     settings:
-      node_count_dynamic_max: 20
-      bandwidth_tier: gvnic_enabled
+      node_count_dynamic_max: 4
+      machine_type: c3d-highcpu-180
+      disk_type: pd-balanced
       allow_automatic_updates: false
 
-  - id: compute_partition
+  - id: highcpu_partition
     source: community/modules/compute/schedmd-slurm-gcp-v6-partition
-    use: [compute_nodeset]
+    use: [c3d180_nodeset]
     settings:
-      partition_name: compute
+      exclusive: false
+      partition_name: highcpu
+      is_default: true
+
+  - id: c3d_hm_30_nodeset
+    source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
+    use: [network]
+    settings:
+      node_count_dynamic_max: 2
+      machine_type: c3d-highmem-30
+      disk_type: pd-balanced
+      allow_automatic_updates: false
+
+  - id: highmem_partition
+    source: community/modules/compute/schedmd-slurm-gcp-v6-partition
+    use: [c3d_hm_30_nodeset]
+    settings:
+      exclusive: true
+      partition_name: highmem
       is_default: false
 
-  - id: debug_nodeset
+  - id: c3d_s_4_nodeset
     source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
     use: [network]
     settings:
-      node_count_dynamic_max: 10
-      machine_type: n2-standard-2
+      node_count_dynamic_max: 5
+      machine_type: c3d-standard-4
+      disk_type: pd-balanced
       allow_automatic_updates: false
 
-  - id: debug_partition
+  - id: standard_partition
     source: community/modules/compute/schedmd-slurm-gcp-v6-partition
-    use:
-    - debug_nodeset
+    use: [c3d_s_4_nodeset]
     settings:
-      partition_name: debug
+      partition_name: standard
       exclusive: false # allows nodes to stay up after jobs are done
-      is_default: true
+      is_default: false
+
+  - id: g2_s_4_nodeset
+    source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
+    use: [network]
+    settings:
+      node_count_dynamic_max: 2
+      machine_type: g2-standard-4
+      disk_type: pd-balanced
+      allow_automatic_updates: false
+
+  - id: gpu_partition
+    source: community/modules/compute/schedmd-slurm-gcp-v6-partition
+    use: [g2_s_4_nodeset]
+    settings:
+      partition_name: gpu
+      exclusive: true # allows nodes to stay up after jobs are done
+      is_default: false
 
   - id: slurm_login
     source: community/modules/scheduler/schedmd-slurm-gcp-v6-login
@@ -175,8 +211,10 @@ deployment_groups:
     source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
     use:
     - network
-    - compute_partition
-    - debug_partition
+    - highmem_partition
+    - highcpu_partition
+    - standard_partition
+    - gpu_partition
     - slurm_login
     - homefs
     - appsfs
