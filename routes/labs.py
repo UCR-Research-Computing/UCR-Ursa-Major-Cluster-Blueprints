@@ -1,80 +1,54 @@
 from flask import Blueprint, request, jsonify
-from models.models import Lab, Researcher, Project # Import necessary models
-from app import db # Import db instance
+from models.models import Lab, Researcher, Project
+from app import db
+from schemas import LabSchema # Import LabSchema
+from marshmallow import ValidationError
 
 lab_bp = Blueprint('lab_bp', __name__)
 
-# Basic serialization for related objects (can be expanded)
-def mini_researcher_to_json(researcher):
-    if not researcher:
-        return None
-    return {
-        "id": researcher.id,
-        "name": researcher.name,
-        "email": researcher.email,
-        "department": researcher.department
-    }
-
-def mini_project_to_json(project):
-    if not project:
-        return None
-    return {
-        "id": project.id,
-        "name": project.name,
-        "description": project.description
-    }
-
-def lab_to_json(lab_obj):
-    """Serializes a Lab object to a dictionary."""
-    projects_data = []
-    if lab_obj.projects: # lab.projects is dynamic (or subquery)
-        # If it's dynamic, use .all(), otherwise, it's already a list
-        projects_list = lab_obj.projects.all() if hasattr(lab_obj.projects, 'all') else lab_obj.projects
-        projects_data = [mini_project_to_json(p) for p in projects_list]
-
-    return {
-        "id": lab_obj.id,
-        "name": lab_obj.name,
-        "description": lab_obj.description,
-        "principal_investigator": mini_researcher_to_json(lab_obj.principal_investigator) if lab_obj.principal_investigator else None,
-        "members": [mini_researcher_to_json(member) for member in lab_obj.members.all()] if hasattr(lab_obj.members, 'all') else [], # Assuming lab.members is dynamic
-        "projects": projects_data
-    }
+# Instantiate schemas
+lab_schema = LabSchema()
+labs_schema = LabSchema(many=True)
+# For updates, we'll use lab_schema with partial=True: LabSchema(partial=True)
 
 @lab_bp.route('', methods=['POST'])
 def create_lab():
-    data = request.get_json()
-    if not data:
+    json_data = request.get_json()
+    if not json_data:
         return jsonify({"error": "No input data provided"}), 400
 
-    required_fields = ['name', 'description']
-    missing_fields = [field for field in required_fields if not data.get(field)]
-    if missing_fields:
-        return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+    try:
+        # Schema will load basic fields. Relationships from IDs need manual handling.
+        # The schema has principal_investigator_id and project_ids as load_only fields.
+        loaded_data = lab_schema.load(json_data) # load_instance=True creates a Lab object
 
-    new_lab = Lab(
-        name=data['name'],
-        description=data['description']
-    )
+        new_lab = loaded_data # This is the Lab instance if load_instance=True
 
-    if 'principalInvestigatorId' in data and data['principalInvestigatorId'] is not None:
-        pi = Researcher.query.get(data['principalInvestigatorId'])
-        if not pi:
-            return jsonify({"error": f"Principal Investigator with id {data['principalInvestigatorId']} not found"}), 404
-        new_lab.principal_investigator = pi
+        # Handle relationships based on IDs passed in json_data, not directly via schema for complex linking
+        if 'principalInvestigatorId' in json_data and json_data['principalInvestigatorId'] is not None:
+            pi = Researcher.query.get(json_data['principalInvestigatorId'])
+            if not pi:
+                return jsonify({"error": f"Principal Investigator with id {json_data['principalInvestigatorId']} not found"}), 404
+            new_lab.principal_investigator = pi # Assign the object
+            new_lab.principal_investigator_id = pi.id # Ensure FK is set if not done by relationship assignment
+        else:
+            new_lab.principal_investigator_id = None # Explicitly nullify if not provided or null
+            new_lab.principal_investigator = None
 
-    if 'projectIds' in data and data['projectIds']:
-        projects = []
-        for project_id in data['projectIds']:
-            project = Project.query.get(project_id)
-            if not project:
-                return jsonify({"error": f"Project with id {project_id} not found"}), 404
-            projects.append(project)
-        new_lab.projects = projects # Assign list of Project objects
 
-    db.session.add(new_lab)
-    db.session.commit()
-    return jsonify(lab_to_json(new_lab)), 201
+        if 'projectIds' in json_data and json_data['projectIds']:
+            new_lab.projects.clear() # Clear existing before adding new ones, if any
+            for project_id in json_data['projectIds']:
+                project = Project.query.get(project_id)
+                if not project:
+                    return jsonify({"error": f"Project with id {project_id} not found"}), 404
+                new_lab.projects.append(project)
+
+        db.session.add(new_lab) # Add the instance if schema didn't auto-add via session
+        db.session.commit()
+        return jsonify(lab_schema.dump(new_lab)), 201
+    except ValidationError as err:
+        return jsonify(err.messages), 400
 
 @lab_bp.route('', methods=['GET'])
 def get_labs():
@@ -82,10 +56,10 @@ def get_labs():
     per_page = request.args.get('per_page', 10, type=int)
 
     labs_page = Lab.query.paginate(page=page, per_page=per_page, error_out=False)
-    labs_list = [lab_to_json(lab) for lab in labs_page.items]
+    result = labs_schema.dump(labs_page.items)
 
     return jsonify({
-        "labs": labs_list,
+        "labs": result,
         "total_pages": labs_page.pages,
         "current_page": labs_page.page,
         "total_items": labs_page.total
@@ -93,51 +67,55 @@ def get_labs():
 
 @lab_bp.route('/<int:id>', methods=['GET'])
 def get_lab(id):
-    lab = Lab.query.get(id)
-    if not lab:
-        return jsonify({"error": "Lab not found"}), 404
-    return jsonify(lab_to_json(lab))
+    lab = Lab.query.get_or_404(id)
+    return jsonify(lab_schema.dump(lab))
 
 @lab_bp.route('/<int:id>', methods=['PUT'])
 def update_lab(id):
-    lab = Lab.query.get(id)
-    if not lab:
-        return jsonify({"error": "Lab not found"}), 404
-
-    data = request.get_json()
-    if not data:
+    lab_instance = Lab.query.get_or_404(id)
+    json_data = request.get_json()
+    if not json_data:
         return jsonify({"error": "No data provided"}), 400
 
-    lab.name = data.get('name', lab.name)
-    lab.description = data.get('description', lab.description)
+    try:
+        # Use partial=True for updates. load_instance=True updates lab_instance directly.
+        # Schema handles basic field updates. Relationships from IDs need careful handling.
+        # The schema has principal_investigator_id and project_ids as load_only.
+        # These won't be directly applied to model by schema.load if they are not model attributes.
+        # We need to handle them manually *after* schema.load validates other fields.
 
-    if 'principalInvestigatorId' in data:
-        pi_id = data['principalInvestigatorId']
-        if pi_id is not None:
-            pi = Researcher.query.get(pi_id)
-            if not pi:
-                return jsonify({"error": f"Principal Investigator with id {pi_id} not found"}), 404
-            lab.principal_investigator = pi
-        else: # Allow unsetting PI
-            lab.principal_investigator = None
-            lab.principal_investigator_id = None
+        # Load basic attributes onto the instance
+        lab_schema.load(json_data, instance=lab_instance, partial=True)
 
+        # Manual handling for relationships based on IDs from json_data
+        if 'principalInvestigatorId' in json_data:
+            pi_id = json_data['principalInvestigatorId']
+            if pi_id is not None:
+                pi = Researcher.query.get(pi_id)
+                if not pi:
+                    return jsonify({"error": f"Principal Investigator with id {pi_id} not found"}), 404
+                lab_instance.principal_investigator = pi
+                lab_instance.principal_investigator_id = pi.id
+            else: # Allow unsetting PI
+                lab_instance.principal_investigator = None
+                lab_instance.principal_investigator_id = None
 
-    if 'projectIds' in data:
-        projects = []
-        if data['projectIds']: # If empty list provided, it will clear projects
-            for project_id in data['projectIds']:
+        if 'projectIds' in json_data:
+            lab_instance.projects.clear() # Clear existing before adding new ones
+            for project_id in json_data['projectIds']:
                 project = Project.query.get(project_id)
                 if not project:
                     return jsonify({"error": f"Project with id {project_id} not found"}), 404
-                projects.append(project)
-        lab.projects = projects # Reassign the list of projects
+                lab_instance.projects.append(project)
 
-    db.session.commit()
-    return jsonify(lab_to_json(lab))
+        db.session.commit()
+        return jsonify(lab_schema.dump(lab_instance))
+    except ValidationError as err:
+        return jsonify(err.messages), 400
+
 
 @lab_bp.route('/<int:id>', methods=['DELETE'])
-def delete_lab(id):
+def delete_lab(id): # No schema validation needed for delete
     lab = Lab.query.get(id)
     if not lab:
         return jsonify({"error": "Lab not found"}), 404

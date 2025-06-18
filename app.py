@@ -15,10 +15,13 @@ load_dotenv()
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+from flask_marshmallow import Marshmallow # Import Marshmallow
+
 # Initialize extensions
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 CORS(app)
+ma = Marshmallow(app) # Initialize Marshmallow
 
 # Import models to ensure they are registered with SQLAlchemy
 # This needs to come after db initialization.
@@ -46,6 +49,28 @@ app.register_blueprint(data_bp, url_prefix='/api/data')
 from routes.ai import ai_bp
 app.register_blueprint(ai_bp, url_prefix='/api/ai')
 
+# Swagger UI Configuration
+from flask_swagger_ui import get_swaggerui_blueprint
+SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing slash)
+API_URL = '/static/swagger.json'  # URL for your Swagger JSON spec (relative to static folder)
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "UCR Research Computing Dashboard API",
+        'layout': "BaseLayout", # Other options: "StandaloneLayout"
+        'docExpansion': "list", # Options: "none", "list", "full"
+        'persistAuthorization': True,
+    }
+)
+app.register_blueprint(swaggerui_blueprint) # Register with app, url_prefix is SWAGGER_URL by default
+
+# Error Handler for Marshmallow ValidationErrors
+from marshmallow.exceptions import ValidationError
+@app.errorhandler(ValidationError)
+def handle_marshmallow_validation(err):
+    return jsonify(err.messages), 400
 
 if __name__ == '__main__':
     app.run()

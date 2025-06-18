@@ -1,0 +1,532 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "UCR Research Computing Dashboard API",
+    "version": "1.0.0",
+    "description": "API for managing researchers, labs, projects, compute resources, grants, notes, and AI-powered services."
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "API base path"
+    }
+  ],
+  "paths": {
+    "/researchers": {
+      "get": {
+        "summary": "List all researchers",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "page", "in": "query", "description": "Page number for pagination", "schema": {"type": "integer", "default": 1}},
+          {"name": "per_page", "in": "query", "description": "Items per page for pagination", "schema": {"type": "integer", "default": 10}}
+        ],
+        "responses": {
+          "200": {
+            "description": "A paginated list of researchers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "researchers": {"type": "array", "items": { "$ref": "#/components/schemas/ResearcherOutput" }},
+                    "total_pages": {"type": "integer"},
+                    "current_page": {"type": "integer"},
+                    "total_items": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new researcher",
+        "tags": ["Researchers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResearcherInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Researcher created successfully.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResearcherOutput" }}}
+          },
+          "400": { "description": "Invalid input or validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/researchers/{researcherId}": {
+      "get": {
+        "summary": "Get a researcher by ID",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the researcher.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResearcherOutput" }}}
+          },
+          "404": { "description": "Researcher not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      },
+      "put": {
+        "summary": "Update a researcher",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResearcherUpdateInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Researcher updated successfully.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResearcherOutput" }}}
+          },
+          "400": { "description": "Invalid input or validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      },
+      "delete": {
+        "summary": "Delete a researcher",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": { "description": "Researcher deleted successfully.", "content": { "application/json": { "schema": {"type": "object", "properties": {"message": {"type": "string"}}}}}},
+          "400": { "description": "Cannot delete researcher due to dependencies.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/researchers/{researcherId}/notes": {
+      "post": {
+        "summary": "Create a new note for a researcher",
+        "tags": ["Researcher Notes"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NoteInput" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Note created successfully.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NoteOutput" }}}},
+          "400": { "description": "Invalid input.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher or Project not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/researchers/{researcherId}/notes/{noteId}": {
+      "put": {
+        "summary": "Update a researcher's note",
+        "tags": ["Researcher Notes"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "noteId", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NoteInput" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Note updated successfully.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NoteOutput" }}}},
+          "400": { "description": "Invalid input.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "403": { "description": "Note does not belong to this researcher.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher, Note, or Project not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      },
+      "delete": {
+        "summary": "Delete a researcher's note",
+        "tags": ["Researcher Notes"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "noteId", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": { "description": "Note deleted successfully.", "content": { "application/json": { "schema": {"type": "object", "properties": {"message": {"type": "string"}}}}}},
+          "403": { "description": "Note does not belong to this researcher.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher or Note not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {"type": "string", "example": "Error message detail."}
+        }
+      },
+      "NoteBase": {
+        "type": "object",
+        "properties": {
+          "content": {"type": "string", "example": "This is a research note."},
+          "projectId": {"type": "integer", "nullable": true, "example": 1}
+        },
+        "required": ["content"]
+      },
+      "NoteInput": {
+        "allOf": [
+          { "$ref": "#/components/schemas/NoteBase" }
+        ]
+      },
+      "NoteOutput": {
+        "allOf": [
+          { "$ref": "#/components/schemas/NoteBase" },
+          {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer", "example": 1},
+              "researcher_id": {"type": "integer", "example": 1},
+              "created_at": {"type": "string", "format": "date-time", "example": "2024-01-01T10:00:00Z"},
+              "updated_at": {"type": "string", "format": "date-time", "nullable": true, "example": "2024-01-02T10:00:00Z"}
+            }
+          }
+        ]
+      },
+      "ResearcherBase": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "example": "Dr. Ada Lovelace"},
+          "email": {"type": "string", "format": "email", "example": "ada@example.com"},
+          "department": {"type": "string", "example": "Computer Science"},
+          "bio": {"type": "string", "nullable": true, "example": "Pioneering work in computation."},
+          "lab_id": {"type": "integer", "nullable": true, "example": 1}
+        }
+      },
+      "ResearcherInput": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ResearcherBase" },
+          {
+            "type": "object",
+            "required": ["name", "email", "department"]
+          }
+        ]
+      },
+      "ResearcherUpdateInput": {
+         "allOf": [
+          { "$ref": "#/components/schemas/ResearcherBase" }
+          // Individual fields are optional in PUT
+        ]
+      },
+      "MiniLabOutput": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer"},
+            "name": {"type": "string"}
+        }
+      },
+      "ResearcherOutput": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ResearcherBase" },
+          {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer", "example": 1},
+              "notes": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/NoteOutput" }
+              },
+              "led_labs": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/MiniLabOutput"}
+              },
+              "member_of_lab": {
+                  "oneOf": [
+                      { "$ref": "#/components/schemas/MiniLabOutput" },
+                      { "type": "null" }
+                  ]
+              }
+            }
+          }
+        ]
+      },
+      "MiniProjectOutput": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer"},
+            "name": {"type": "string"},
+            "description": {"type": "string", "nullable": true}
+        }
+      },
+      "LabBase": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "example": "Advanced Quantum Computing Lab"},
+          "description": {"type": "string", "nullable": true, "example": "Researching next-gen quantum algorithms."},
+          "principalInvestigatorId": {"type": "integer", "nullable": true, "example": 1, "description": "ID of the PI"},
+          "projectIds": {
+            "type": "array",
+            "items": {"type": "integer"},
+            "nullable": true,
+            "example": [1, 2],
+            "description": "List of Project IDs associated with the lab"
+          }
+        }
+      },
+      "LabInput": {
+        "allOf": [
+          { "$ref": "#/components/schemas/LabBase" },
+          {
+            "type": "object",
+            "required": ["name"]
+          }
+        ]
+      },
+      "LabOutput": {
+        "allOf": [
+          { "$ref": "#/components/schemas/LabBase" },
+          {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer", "example": 1},
+              "principal_investigator": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/MiniResearcherOutput" },
+                  { "type": "null"}
+                ]
+              },
+              "members": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/MiniResearcherOutput" }
+              },
+              "projects": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/MiniProjectOutput" }
+              }
+            }
+          }
+        ]
+      },
+       "MiniResearcherOutput": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer"},
+            "name": {"type": "string"},
+            "email": {"type": "string", "format": "email"},
+            "department": {"type": "string"}
+        }
+      }
+    }
+  },
+  "paths": {
+    "/researchers": {
+      "get": {
+        "summary": "List all researchers",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "page", "in": "query", "description": "Page number for pagination", "schema": {"type": "integer", "default": 1}},
+          {"name": "per_page", "in": "query", "description": "Items per page for pagination", "schema": {"type": "integer", "default": 10}}
+        ],
+        "responses": {
+          "200": {
+            "description": "A paginated list of researchers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "researchers": {"type": "array", "items": { "$ref": "#/components/schemas/ResearcherOutput" }},
+                    "total_pages": {"type": "integer"},
+                    "current_page": {"type": "integer"},
+                    "total_items": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new researcher",
+        "tags": ["Researchers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResearcherInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Researcher created successfully.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResearcherOutput" }}}
+          },
+          "400": { "description": "Invalid input or validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/researchers/{researcherId}": {
+      "get": {
+        "summary": "Get a researcher by ID",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the researcher.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResearcherOutput" }}}
+          },
+          "404": { "description": "Researcher not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      },
+      "put": {
+        "summary": "Update a researcher",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResearcherUpdateInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Researcher updated successfully.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResearcherOutput" }}}
+          },
+          "400": { "description": "Invalid input or validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      },
+      "delete": {
+        "summary": "Delete a researcher",
+        "tags": ["Researchers"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": { "description": "Researcher deleted successfully.", "content": { "application/json": { "schema": {"type": "object", "properties": {"message": {"type": "string"}}}}}},
+          "400": { "description": "Cannot delete researcher due to dependencies.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/researchers/{researcherId}/notes": {
+      "post": {
+        "summary": "Create a new note for a researcher",
+        "tags": ["Researcher Notes"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "description": "ID of the researcher", "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NoteInput" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Note created successfully.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NoteOutput" }}}},
+          "400": { "description": "Invalid input.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher or Project not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/researchers/{researcherId}/notes/{noteId}": {
+      "put": {
+        "summary": "Update a researcher's note",
+        "tags": ["Researcher Notes"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "noteId", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NoteInput" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Note updated successfully.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NoteOutput" }}}},
+          "400": { "description": "Invalid input.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "403": { "description": "Note does not belong to this researcher.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher, Note, or Project not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      },
+      "delete": {
+        "summary": "Delete a researcher's note",
+        "tags": ["Researcher Notes"],
+        "parameters": [
+          {"name": "researcherId", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "noteId", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": { "description": "Note deleted successfully.", "content": { "application/json": { "schema": {"type": "object", "properties": {"message": {"type": "string"}}}}}},
+          "403": { "description": "Note does not belong to this researcher.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Researcher or Note not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    },
+    "/labs": {
+      "get": {
+        "summary": "List all labs",
+        "tags": ["Labs"],
+        "parameters": [
+          {"name": "page", "in": "query", "description": "Page number", "schema": {"type": "integer", "default": 1}},
+          {"name": "per_page", "in": "query", "description": "Items per page", "schema": {"type": "integer", "default": 10}}
+        ],
+        "responses": {
+          "200": {
+            "description": "A paginated list of labs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "labs": {"type": "array", "items": { "$ref": "#/components/schemas/LabOutput" }},
+                    "total_pages": {"type": "integer"},
+                    "current_page": {"type": "integer"},
+                    "total_items": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new lab",
+        "tags": ["Labs"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LabInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lab created successfully.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LabOutput" }}}
+          },
+          "400": { "description": "Invalid input or validation error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}},
+          "404": { "description": "Related entity (e.g., PI or Project) not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }}}}
+        }
+      }
+    }
+  }
+}
