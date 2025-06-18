@@ -1,0 +1,12 @@
+Flask
+Flask-SQLAlchemy
+psycopg2-binary
+python-dotenv
+Flask-CORS
+Flask-Migrate
+gunicorn
+google-generativeai
+marshmallow
+marshmallow-sqlalchemy
+marshmallow-enum==1.5.1
+flask-swagger-ui

@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.flaskenv
+.pytest_cache/
+.vscode/
+.git/
+.gitignore
+*.db
+*.db-journal
+test.db
+test.db-journal
+migrations/
+# Add other local development files or large data files if any
+# Example:
+# local_test_data/
+# *.log
+# .DS_Store
+# Thumbs.db
